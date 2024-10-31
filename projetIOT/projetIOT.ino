@@ -1,7 +1,8 @@
 #include <DHT.h>
 #include <Servo.h>
 
-Servo monServo;
+Servo monServo;    // First servo motor
+Servo secondServo; // Second servo motor
 
 #define echoPin 2
 #define trigPin 3
@@ -17,11 +18,13 @@ void setup() {
   // Setup pin modes and initial states
   pinMode(trigPin, OUTPUT);  // Pin for distance sensor output (trigger)
   pinMode(echoPin, INPUT);   // Pin for distance sensor input (echo)
-  pinMode(buzzer, OUTPUT);   // Pin for the buzzer
+  pinMode(buzzer, OUTPUT);    // Pin for the buzzer
 
-  monServo.attach(5);        // Attach the servo to pin 5
-  monServo.write(0);         // Set the servo to 0 degrees
-  delay(500);               // Wait 1 second
+  monServo.attach(5);         // Attach the first servo to pin 5
+  secondServo.attach(4);      // Attach the second servo to pin 4
+  monServo.write(0);          // Set the first servo to 0 degrees
+  secondServo.write(0);       // Set the second servo to 0 degrees
+  delay(500);                 // Wait half a second
 }
 
 void loop() {
@@ -40,24 +43,28 @@ void loop() {
   Serial.print(distance);
   Serial.println(" cm");
 
-  // If the distance is 5 cm or less, activate the buzzer and move the servo between 0 and 190 degrees continuously
+  // If the distance is 5 cm or less, activate the buzzer and move the servos
   if (distance <= 5) {
     digitalWrite(buzzer, HIGH);  // Turn on the buzzer
     
-    // Make the servo motor move continuously between 0 and 180 degrees faster
-    for (int pos = 0; pos <= 190; pos += 1) {  // Move the servo from 0 to 190 degrees
+    // Move both servos between 0 and 190 degrees
+    for (int pos = 0; pos <= 190; pos += 1) {  
       monServo.write(pos);
-      delay(1);  // Faster movement (reduced delay from 15ms to 5ms)
+      secondServo.write(pos); // Move the second servo simultaneously
+      delay(1);  // Fast movement
     }
-    for (int pos = 190; pos >= 0; pos -= 1) {  // Move the servo back from 190 to 0 degrees
+    for (int pos = 190; pos >= 0; pos -= 1) {  
       monServo.write(pos);
-      delay(1);  // Fast mouvement
+      secondServo.write(pos); // Move the second servo simultaneously
+      delay(1);  // Fast movement
     }
     
   } else {
     digitalWrite(buzzer, LOW);   // Turn off the buzzer
-    monServo.write(0);           // Move the servo back to 0 degrees
+    monServo.write(0);           // Move the first servo back to 0 degrees
+    secondServo.write(0);        // Move the second servo back to 0 degrees
   }
 
   delay(500);  // Wait half a second before the next reading
 }
+
