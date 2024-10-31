@@ -6,65 +6,60 @@ Servo secondServo; // Second servo motor
 
 #define echoPin 2
 #define trigPin 3
-
 const int buzzer = 6;  // Buzzer pin
-long duration;         // Variable to store the time it takes for the echo to return
-int distance;          // Variable to store the calculated distance
+
+long duration;         // Time for the echo to return
+int distance;          // Calculated distance
 
 void setup() {
-  // Initialize serial communication
   Serial.begin(9600);
+  pinMode(trigPin, OUTPUT);  
+  pinMode(echoPin, INPUT);   
+  pinMode(buzzer, OUTPUT);    
 
-  // Setup pin modes and initial states
-  pinMode(trigPin, OUTPUT);  // Pin for distance sensor output (trigger)
-  pinMode(echoPin, INPUT);   // Pin for distance sensor input (echo)
-  pinMode(buzzer, OUTPUT);    // Pin for the buzzer
-
-  monServo.attach(5);         // Attach the first servo to pin 5
-  secondServo.attach(4);      // Attach the second servo to pin 4
-  monServo.write(0);          // Set the first servo to 0 degrees
-  secondServo.write(0);       // Set the second servo to 0 degrees
-  delay(500);                 // Wait half a second
+  monServo.attach(5);         
+  secondServo.attach(4);      
+  monServo.write(0);          
+  secondServo.write(0);       
+  delay(500);                 
 }
 
 void loop() {
-  // Calculate the distance from the ultrasonic sensor
-  digitalWrite(trigPin, LOW);  // Clear the trigger
+  digitalWrite(trigPin, LOW);  
   delayMicroseconds(2);        
-  digitalWrite(trigPin, HIGH); // Send a trigger pulse
+  digitalWrite(trigPin, HIGH); 
   delayMicroseconds(10);       
   digitalWrite(trigPin, LOW);  
 
-  duration = pulseIn(echoPin, HIGH);  // Measure the time of the echo
-  distance = duration * 0.034 / 2;    // Convert time to distance (in cm)
+  duration = pulseIn(echoPin, HIGH);  
+  distance = duration * 0.034 / 2;    
 
-  // Print the distance to the serial monitor
   Serial.print("Distance: ");
   Serial.print(distance);
   Serial.println(" cm");
 
-  // If the distance is 5 cm or less, activate the buzzer and move the servos
   if (distance <= 5) {
-    digitalWrite(buzzer, HIGH);  // Turn on the buzzer
-    
-    // Move both servos between 0 and 190 degrees
-    for (int pos = 0; pos <= 190; pos += 1) {  
-      monServo.write(pos);
-      secondServo.write(pos); // Move the second servo simultaneously
-      delay(1);  // Fast movement
-    }
-    for (int pos = 190; pos >= 0; pos -= 1) {  
-      monServo.write(pos);
-      secondServo.write(pos); // Move the second servo simultaneously
-      delay(1);  // Fast movement
-    }
-    
+    activateBuzzer(true);
+    moveServos(0, 190);
+    moveServos(190, 0);
   } else {
-    digitalWrite(buzzer, LOW);   // Turn off the buzzer
-    monServo.write(0);           // Move the first servo back to 0 degrees
-    secondServo.write(0);        // Move the second servo back to 0 degrees
+    activateBuzzer(false);
+    moveServos(0, 0);
   }
 
-  delay(500);  // Wait half a second before the next reading
+  delay(500);  
 }
+
+void activateBuzzer(bool state) {
+  digitalWrite(buzzer, state ? HIGH : LOW);
+}
+
+void moveServos(int startPos, int endPos) {
+  for (int pos = startPos; pos <= endPos; pos++) {  
+    monServo.write(pos);
+    secondServo.write(pos); 
+    delay(1);  
+  }
+}
+
 
