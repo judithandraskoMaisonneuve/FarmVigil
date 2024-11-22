@@ -38,7 +38,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="/home/vincent/Desktop/FarmVigil/venv"
+VIRTUAL_ENV="/home/vincent/Desktop/farmvigil/FarmVigil/projetIOT/FarmVigil_python/venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

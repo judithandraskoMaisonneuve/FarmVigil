@@ -1,0 +1,7 @@
+aliot_py==1.0.6
+numpy==2.1.3
+opencv_python==4.10.0.84
+opencv_python_headless==4.10.0.84
+picamera==1.13
+picamera2==0.3.21
+pyserial==3.5
