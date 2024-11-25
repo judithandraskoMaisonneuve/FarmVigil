@@ -28,6 +28,26 @@ raw_capture = PiRGBArray(camera, size=(640, 480))
 # Allow camera to warm up
 time.sleep(0.1)
 
+def count_fingers(hand_landmarks):
+    fingers = []
+    tip_ids = [4, 8, 12, 16, 20]
+
+    # Thumb
+    if (hand_landmarks.landmark[tip_ids[0]].y < hand_landmarks.landmark[tip_ids[0] - 1].y):
+        fingers.append(1)
+    else:
+        fingers.append(0)
+
+    # Fingers
+    for id in range(1, 5):
+        if (hand_landmarks.landmark[tip_ids[id]].y < hand_landmarks.landmark[tip_ids[id] - 2].y):
+            fingers.append(1)
+        else:
+            fingers.append(0)
+
+    return fingers.count(1)
+
+
 for frame in camera.capture_continuous(raw_capture, format="bgr", use_video_port=True):
     # Grab the image array
     image = frame.array
@@ -37,6 +57,10 @@ for frame in camera.capture_continuous(raw_capture, format="bgr", use_video_port
     if results.multi_hand_landmarks:
         for hand_landmarks in results.multi_hand_landmarks:
             mp_draw.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+
+            # Count fingers
+            num_fingers = count_fingers(hand_landmarks)
+            print(f"L'utilisateur montre {num_fingers} doigts")
 
     # Prepare the frame for YOLO detection
     blob = cv2.dnn.blobFromImage(image, 0.00392, (416, 416), (0, 0, 0), True, crop=False)
