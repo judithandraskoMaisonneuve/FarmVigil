@@ -1,8 +1,14 @@
 import cv2
 import numpy as np
+import mediapipe as mp
 from picamera import PiCamera
 from picamera.array import PiRGBArray
 import time
+
+# Initialize MediaPipe hand tracking
+mp_hands = mp.solutions.hands
+hands = mp_hands.Hands(max_num_hands=2, min_detection_confidence=0.5, min_tracking_confidence=0.5)
+mp_draw = mp.solutions.drawing_utils
 
 # Load YOLOv4 weights, config, and coco.names
 net = cv2.dnn.readNet("yolo/yolov4.weights", "yolo/yolov4.cfg")
@@ -25,7 +31,13 @@ time.sleep(0.1)
 for frame in camera.capture_continuous(raw_capture, format="bgr", use_video_port=True):
     # Grab the image array
     image = frame.array
-    
+
+    # Hand tracking
+    results = hands.process(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    if results.multi_hand_landmarks:
+        for hand_landmarks in results.multi_hand_landmarks:
+            mp_draw.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+
     # Prepare the frame for YOLO detection
     blob = cv2.dnn.blobFromImage(image, 0.00392, (416, 416), (0, 0, 0), True, crop=False)
     net.setInput(blob)
@@ -69,8 +81,8 @@ for frame in camera.capture_continuous(raw_capture, format="bgr", use_video_port
             cv2.rectangle(image, (x, y), (x + w, y + h), color, 2)
             cv2.putText(image, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
 
-    # Show the frame with detections
-    cv2.imshow("Scarecrow Detection", image)
+    # Show the frame with detections and hand tracking
+    cv2.imshow("Scarecrow Detection with Hand Tracking", image)
 
     # Clear the stream for the next frame
     raw_capture.truncate(0)
@@ -81,3 +93,4 @@ for frame in camera.capture_continuous(raw_capture, format="bgr", use_video_port
 
 # Release resources
 cv2.destroyAllWindows()
+hands.close()
