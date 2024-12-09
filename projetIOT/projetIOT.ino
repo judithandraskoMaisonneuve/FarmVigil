@@ -88,6 +88,3 @@ void resetServos() {
   monServo.write(0);
   secondServo.write(0);
 }
-
-
-
