@@ -5,7 +5,7 @@ from aliot.aliot_obj import AliotObj
 # Initialize Aliot object
 Rasp_FarmVigil = AliotObj("Rasp_FarmVigil")
 
-time.sleep(5)
+time.sleep(10)
 
 
 def update_data():
