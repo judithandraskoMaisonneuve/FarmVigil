@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import mediapipe as mp
 from picamera2 import Picamera2
 import serial
 import threading
@@ -15,6 +16,11 @@ layer_names = net.getLayerNames()
 output_layers = [layer_names[i - 1] for i in net.getUnconnectedOutLayers()]
 with open("coco/coco.names", "r") as f:
     classes = [line.strip() for line in f.readlines()]
+
+# Initialize Mediapipe Hand Detection
+mp_hands = mp.solutions.hands
+hands = mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+mp_draw = mp.solutions.drawing_utils
 
 # Initialize camera
 camera = Picamera2()
@@ -35,12 +41,20 @@ def detect_objects():
     global distance, _led_state, buzzer_state, camera_started, information
     try:
         while not stop_event.is_set():
-            if distance <= 50.0 and not camera_started:
+            if distance <= 20.0 and not camera_started:
                 _led_state = True
                 ser.write(b'L')
                 camera.start()  # Start the camera when the person is detected
                 camera_started = True
                 time.sleep(0.2)
+
+            if distance > 20.0 and camera_started:
+                _led_state = False
+                ser.write(b'F')
+                camera.stop()  # Stop the camera immediately
+                camera_started = False
+                cv2.destroyAllWindows()  # Close the window
+                time.sleep(1)  # Cooldown time
 
             if camera_started:
                 frame = camera.capture_array()
@@ -50,6 +64,14 @@ def detect_objects():
 
                 # Display the frame in a window
                 frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGBA2BGR)
+                frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+                
+                # Mediapipe Hand Detection
+                results = hands.process(frame_rgb)
+                if results.multi_hand_landmarks:
+                    for hand_landmarks in results.multi_hand_landmarks:
+                        mp_draw.draw_landmarks(frame_bgr, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+
                 cv2.imshow("FarmVigil", frame_bgr)  # Show the live feed
 
                 # Check for key press to close the preview
@@ -67,7 +89,7 @@ def detect_objects():
                         scores = detection[5:]
                         class_id = np.argmax(scores)
                         confidence = scores[class_id]
-                        
+
                         # Check only for "person" class
                         if class_id == 0 and confidence > 0.5:  # 0 since "person" is the only item in classes
                             person_detected = True
@@ -78,13 +100,10 @@ def detect_objects():
                     ser.write(b'P')
                     information = "PERSONNE DETECTE"
                     buzzer_state = False
-                    camera.stop()  # Stop the camera immediately
-                    camera_started = False
-                    cv2.destroyAllWindows()  # Close the window
-                    time.sleep(30)  # Cooldown time
+
                 else:
                     ser.write(b'N')
-                    information = "NON-HUMAIN DETECTE"
+                    information = "MOVEMENT DETECTE"
                     buzzer_state = True
 
                 time.sleep(1)
@@ -122,8 +141,7 @@ def read_serial():
             data = ser.readline().decode().strip()
             try:
                 # Assuming the serial input contains "distance:<value>", we split by ":" and parse the float
-                
-                print(data)# Get the value after the colon
+                print(data)  # Get the value after the colon
                 distance = float(data)
             except (ValueError, IndexError):
                 pass  # Ignore invalid data
@@ -150,4 +168,5 @@ if __name__ == "__main__":
             time.sleep(1)  # Main thread runs while detection and serial threads work
     except KeyboardInterrupt:
         stop_threads()
+        hands.close()  # Close Mediapipe hands instance
         cv2.destroyAllWindows()
