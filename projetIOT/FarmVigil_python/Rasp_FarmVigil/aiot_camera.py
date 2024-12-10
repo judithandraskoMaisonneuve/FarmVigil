@@ -83,6 +83,90 @@ def detect_objects():
                 outs = net.forward(output_layers)
 
                 # Process detections
+                detected_objects = []
+                for out in outs:
+                    for detection in out:
+                        scores = detection[5:]
+                        class_id = np.argmax(scores)
+                        confidence = scores[class_id]
+
+                        # Check for confidence threshold
+                        if confidence > 0.5:
+                            detected_objects.append((class_id, confidence))
+
+                person_detected = False
+                for class_id, confidence in detected_objects:
+                    label = classes[class_id]
+                    print(f"Detected: {label} with confidence {confidence:.2f}")
+
+                    # Check for "person" detection
+                    if label == "person":
+                        person_detected = True
+
+                # Update buzzer based on detection
+                if person_detected:
+                    ser.write(b'P')
+                    information = "PERSONNE DETECTE"
+                    buzzer_state = False
+
+                else:
+                    ser.write(b'N')
+                    information = "MOVEMENT DETECTE"
+                    buzzer_state = True
+
+                time.sleep(1)
+    finally:
+        _led_state = False
+        buzzer_state = False
+        if camera_started:
+            camera.stop()
+            cv2.destroyAllWindows()
+
+    global distance, _led_state, buzzer_state, camera_started, information
+    try:
+        while not stop_event.is_set():
+            if distance <= 20.0 and not camera_started:
+                _led_state = True
+                ser.write(b'L')
+                camera.start()  # Start the camera when the person is detected
+                camera_started = True
+                time.sleep(0.2)
+
+            if distance > 20.0 and camera_started:
+                _led_state = False
+                ser.write(b'F')
+                camera.stop()  # Stop the camera immediately
+                camera_started = False
+                cv2.destroyAllWindows()  # Close the window
+                time.sleep(1)  # Cooldown time
+
+            if camera_started:
+                frame = camera.capture_array()
+                if frame is None:
+                    print("Failed to capture frame!")
+                    continue
+
+                # Display the frame in a window
+                frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGBA2BGR)
+                frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+                
+                # Mediapipe Hand Detection
+                results = hands.process(frame_rgb)
+                if results.multi_hand_landmarks:
+                    for hand_landmarks in results.multi_hand_landmarks:
+                        mp_draw.draw_landmarks(frame_bgr, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+
+                cv2.imshow("FarmVigil", frame_bgr)  # Show the live feed
+
+                # Check for key press to close the preview
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+
+                blob = cv2.dnn.blobFromImage(frame_bgr, 0.00392, (320, 320), (0, 0, 0), True, crop=False)
+                net.setInput(blob)
+                outs = net.forward(output_layers)
+
+                # Process detections
                 person_detected = False
                 for out in outs:
                     for detection in out:
